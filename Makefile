@@ -15,9 +15,7 @@ DEPEXT    := d
 CFLAGS    := -g -O0
 LDFLAGS   :=
 
-
-GENFILES  :=
-SRCFILES  := $(shell fd ".*\.c") $(addsuffix .o, $(basename $(GENFILES)))
+SRCFILES  := $(shell fd ".*\.c")
 OBJFILES  := $(SRCFILES:$(SRCDIR)/%.$(SRCEXT)=$(OBJDIR)/%.$(OBJEXT))
 DEPFILES  := $(SRCFILES:$(SRCDIR)/%.$(SRCEXT)=$(DEPDIR)/%.$(DEPEXT))
 
@@ -44,9 +42,9 @@ clear: $(BINDIR)/$(PROG)
 
 $(DEPDIR)/%.$(DEPEXT): $(SRCDIR)/%.$(SRCEXT)
 	@set -e; \
-                    rm -f $@; \
-                    $(CC) -MM $< > $@.$$$$; \
-                    sed 's,\($*\)\.o[ :]*,$(OBJDIR)/\1.o $@ : ,g' < $@.$$$$ > $@; \
-                    rm -f $@.$$$$
+		rm -f $@; \
+		$(CC) -MM $< > $@.$$$$; \
+		sed 's,\($*\)\.o[ :]*,$(OBJDIR)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+		rm -f $@.$$$$
 
 .PHONY: _dirs
