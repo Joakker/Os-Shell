@@ -21,18 +21,20 @@ SRCFILES  := $(shell fd ".*\.c") $(addsuffix .o, $(basename $(GENFILES)))
 OBJFILES  := $(SRCFILES:$(SRCDIR)/%.$(SRCEXT)=$(OBJDIR)/%.$(OBJEXT))
 DEPFILES  := $(SRCFILES:$(SRCDIR)/%.$(SRCEXT)=$(DEPDIR)/%.$(DEPEXT))
 
-DIRS      := $(SRCDIR) $(OBJDIR) $(BINDIR) $(DEPDIR)
 
 $(OBJDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@echo Compiling $<
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-$(BINDIR)/$(PROG): $(DIRS) $(OBJFILES)
+all: _dirs $(BINDIR)/$(PROG)
+	@echo Done
+
+$(BINDIR)/$(PROG): $(OBJFILES)
 	@echo Linking $@
 	@$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 
-$(DIRS):
-	@mkdir $@
+_dirs: 
+	@mkdir $(SRCDIR) $(OBJDIR) $(BINDIR) $(DEPDIR)
 
 -include $(DEPFILES)
 
@@ -47,3 +49,4 @@ $(DEPDIR)/%.$(DEPEXT): $(SRCDIR)/%.$(SRCEXT)
                     sed 's,\($*\)\.o[ :]*,$(OBJDIR)/\1.o $@ : ,g' < $@.$$$$ > $@; \
                     rm -f $@.$$$$
 
+.PHONY: _dirs
