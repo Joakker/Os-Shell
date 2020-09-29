@@ -24,7 +24,7 @@ $(OBJDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@echo Compiling $<
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-all: _dirs $(BINDIR)/$(PROG)
+all: $(BINDIR)/$(PROG)
 	@echo Done
 
 $(BINDIR)/$(PROG): $(OBJFILES)
