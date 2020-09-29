@@ -1,0 +1,26 @@
+.TH POSH 1 2020-09-29
+
+.SH NAME
+posh \- tarea implementación de una shell
+
+.SH SYNOPSIS
+.B posh
+[\fB\-c\fR \fIstring\fR]
+[\fB\-i\fR]
+
+.SH DESCRIPTION
+.B posh
+es la implementación de una shell para la primera tarea de
+la asignatura de Sistemas Operativos 2020-2, profesora Cecilia
+Hernández Rivas. Soporta el piping de comandos (máximo 2 pipes
+en una sola línea)
+
+.SH OPTIONS
+.TP
+.BR \-c " " \fIstring\fR
+Ejecuta \fIstring\fR como si fuese ingresada por standard input,
+luego se sale del programa.
+.TP
+.BR \-i
+Fuerza la shell a que sea interactiva, incluso si se indicó la
+opción \-c

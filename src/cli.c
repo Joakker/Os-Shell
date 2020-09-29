@@ -18,6 +18,7 @@ void launchProgram(char** cmd) {
     } else if (pid == 0) {
         // Proceso hijo
         execvp(cmd[0], cmd);
+        fprintf(stderr, "%s: Comando no encontrado\n", cmd[0]);
     } else {
         // Proceso padre
         wait(NULL);
