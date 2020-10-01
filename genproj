@@ -1,244 +1,235 @@
 #!/usr/bin/python3
 
 """
-Initializes a project with a makefile and appropriate
+Initializes a project with a makefile and the appropriate
 directories, as well as a README.md
+Please invoke it with the -h flag to see the available options
 """
 
-from os import mkdir
-from sys import stdout
-from subprocess import run
 from argparse import ArgumentParser, Namespace
-
-dirs = {
-    'SRCDIR': 'src',
-    'DEPDIR': 'dep',
-    'OBJDIR': 'obj',
-    'BINDIR': 'bin',
-}
+from os import getcwd, mkdir
+from os.path import basename, exists
+from subprocess import run
+from sys import stdout, stderr
+from typing import List
 
 
 def get_options() -> Namespace:
-    parser = ArgumentParser(description='Generates/initializes a project')
+    """
+    Parses the command line options and returns a Namespace
+    object containing the corresponding values
+    """
+
+    parser = ArgumentParser(
+        description='Generates a project managed by a makefile',
+        #  epilog='''While this program is POSIX compatible, it can
+        #  also be used with other utility programs as well, like
+        #  fd(1) to replace find(1).'''
+    )
     parser.add_argument(
         '-g', '--git', action='store_true',
-        help='Initialize a git repository'
+        help='Initialize git vcs'
+    )
+    #  parser.add_argument(
+    #     '-p', '--cpp', action='store_true',
+    #     help='Use C++ instead of C as the project language'
+    # )
+    parser.add_argument(
+        '-F', '--find', type=str, metavar='F',
+        default='find . -name *.$(SRCEXT)',
+        help='''Command used to find files. Defaults to
+        "find . -name *.$(SRCEXT)".'''
     )
     parser.add_argument(
-        '-d', '--no-dirs', action='store_true',
-        help='Do not create directories (bin, src, obj...)',
-        dest='no_dirs'
+        '-D', '--no-dirs', action='store_true',
+        help='''Do not create directories while
+        running this program
+        '''
     )
     parser.add_argument(
-        nargs='*', metavar='V', dest='vars',
-        type=str, help='Variable defaults for generated makefile'
+        '-m', '--make', default='Makefile', metavar='M',
+        help='''The name of the makefile to be generated.
+        Defaults to 'Makefile'.'''
     )
     parser.add_argument(
-        '-y', '--use-yacc', dest='yacc', action='store_true',
-        help='Generate variables/recipes to use yacc'
-    )
-    parser.add_argument(
-        '-l', '--use-lex', dest='lex', action='store_true',
-        help='Generate variables/recipes to use lex'
-    )
-    parser.add_argument(
-        '-a', '--adjust', type=int, default=10,
-        help='The space used to adjust variables in the makefile'
-    )
-    parser.add_argument(
-        '-m', '--make', type=str, default='-',
-        help='The output makefile path. Default is stdout for piping'
+        nargs='*', metavar='K=V', dest='vars',
+        type=str, help='''Variable defaults for generated makefile,
+        where K is the variable name and V is the value. K can be
+        specified as all lowercase, but in the makefile it will be
+        converted to all caps.'''
     )
     return parser.parse_args()
 
 
 def git_init() -> None:
-    run(['git', 'init'],
-        capture_output=True, check=True)
+    """
+    Initializes the git repository
+    """
+    run(['git', 'init'], check=True)
 
 
-def make_makefile(args: Namespace) -> None:
-    def get_output_file():
-        return stdout if args.make == '-' else open(args.make, 'w')
+def get_vars(args: Namespace) -> tuple:
+    """
+    Parse args.vars and classify them into the appropriate
+    dictionaries to keep them together
+    """
+    prog = {
+        'PROG': 'prog',
+        'CC':   'gcc',
+    }
 
-    vars = args.vars
     exts = {
         'SRCEXT': 'c',
         'OBJEXT': 'o',
         'DEPEXT': 'd',
     }
 
-    prog = {
-        'PROG': 'prog',
-        'CC': 'gcc',
-        'CXX': 'g++',
+    dirs = {
+        'SRCDIR': 'src',
+        'DEPDIR': 'dep',
+        'OBJDIR': 'obj',
+        'BINDIR': 'bin'
     }
-
-    if args.yacc:
-        prog.update({'YACC': 'yacc'})
-    if args.lex:
-        prog.update({'LEX': 'lex'})
 
     flag = {
-        'CFLAGS': '-g -O0',
-        'LDFLAGS': '',
+        'CFLAGS':   '-g -O0',
+        'LDFLAGS':  ''
     }
 
-    options = [prog, dirs, exts, flag]
-    with get_output_file() as file:
-        def assignment(name: str, value: str) -> str:
-            return f'{name.ljust(args.adjust)}:= {value}\n'
+    opts = (prog, exts, dirs, flag)
+    other = {}
+    for var in args.vars:
+        if '=' not in var:
+            stderr.write(f'{var}: Variables must be of the form K=V\n')
+            raise SystemExit(1)
+        else:
+            key, value = var.split('=')
+            key = key.upper()
+            for opt in opts:
+                if key in opt.keys():
+                    opt[key] = value
+                    break
+            else:
+                other[key] = value
 
+    return opts + (other,)
+
+
+def make_makefile(args: Namespace) -> set:
+    """
+    Generate the Makefile to manage the project. Returns a set containing
+    the names of the directories that the makefile will make use of.
+    """
+    adjust = 10
+    output = '$(BINDIR)/$(PROG)'
+    prog, exts, dirs, flag, other = get_vars(args)
+
+    # Allow the target makefile to be stdout for piping
+    with (stdout if args.make == '-' else open(args.make, 'w')) as file:
+
+        # Define the functions to format the makefile
         def call(name: str, *args) -> str:
             return f'$({name} {", ".join(args)})'
 
-        def from_sources(to: str) -> str:
-            return assignment(
-                f'{to}FILES',
-                f'$(SRCFILES:$(SRCDIR)/%.$(SRCEXT)=$({to}DIR)/%.$({to}EXT))'
-            )
+        def dir_ext(name: str) -> str:
+            return f'$({name}DIR)/%.$({name}EXT)'
 
-        def find_ext(e: str, append: str = '') -> str:
-            sep = '' if append == '' else ' '
-            return f'$(shell fd ".*\\.{e}"){sep}{append}'
-
-        def make_genfiles_line():
-            genexts = []
-
-            if args.yacc:
-                genexts.append(find_ext('y'))
-            if args.lex:
-                genexts.append(find_ext('l'))
-
-            return assignment(
-                'GENFILES',
-                ' '.join(genexts)
-            )
-
-        def make_rule(target: str, deps=[], actions=[], msg=None):
-            rule = f'{target}: {" ".join(deps)}\n'
-            if msg is not None:
-                rule += f'\t@echo {msg}\n'
-            for action in actions:
-                rule += f'\t@{action}\n'
-            rule += '\n'
-            return rule
-
-        file.write('# Automatically generated by the "genproj" script by Joakker\n')
-        file.write('# Edit to your heart\'s content\n')
-
-        for var in vars:
-            if '=' not in vars:
-                raise SystemExit(
-                    'Variable must be of the form NAME=value'
-                )
-            else:
-                key, value = var.split('=')
-                for option in options:
-                    if key in option.keys():
-                        option[key] = value
-                        break
-                else:
-                    raise SystemExit(f'{var} is not a valid option')
-
-        for option in options:
-            for key, value in option.items():
-                file.write(f'{assignment(key, value)}')
+        def sep() -> None:
             file.write('\n')
-        file.write('\n')
 
-        file.write(make_genfiles_line())
+        # Define the functions to write the makefile
+        def assign(key: str, value: str) -> None:
+            line = f'{key.ljust(adjust)}:= {value}'.strip()
+            file.write(f'{line}\n')
 
-        file.write(
-            assignment(
-                'SRCFILES',
-                find_ext(
-                    exts['SRCEXT'],
-                    call(
-                        'addsuffix', f'.{exts["SRCEXT"]}',
-                        call('basename', '$(GENFILES)')
-                    )
-                )
+        def from_src(to: str) -> str:
+            assign(
+                f'{to}FILES',
+                f'$(SRCFILES:{dir_ext("SRC")}={dir_ext(to)})'
             )
+
+        def rule(target: str, deps: str = '',
+                 message='', *steps: List[str]) -> None:
+            header = f'{target}: {deps}'.strip()
+            file.write(f'{header}\n')
+
+            if len(message) > 0:
+                file.write(f'\t@echo "{message}"\n')
+
+            for step in steps:
+                file.write(f'\t@{step}\n')
+
+            sep()
+
+        file.write("# Generated by the genproj script\n")
+        file.write("# Edit to your heart's content\n\n")
+
+        for opt in (prog, exts, dirs, flag, other):
+            for key, value in opt.items():
+                assign(key, value)
+            sep()
+
+        assign('SRCFILES', call('shell', args.find))
+        from_src('OBJ')
+        from_src('DEP')
+
+        sep()
+
+        rule(
+            dir_ext('OBJ'),
+            dir_ext('SRC'),
+            'Compiling $@',
+            '$(CC) $(CFLAGS) -c $< -o $@'
         )
 
-        file.write(from_sources('OBJ'))
-        file.write(from_sources('DEP'))
+        rule('all', f'dirs {output}', message='Done')
 
-        file.write('\n')
-
-        file.write(
-            make_rule(
-                '$(OBJDIR)/%.$(OBJEXT)',
-                ['$(SRCDIR)/%.$(SRCEXT)'],
-                ['$(CC) $(CFLAGS) -c $< -o $@'],
-                'Compiling $<'
-            )
+        rule(
+            'dirs',
+            ' '.join(dirs.values()),
+            'Making directories',
+            'mkdir -p $^'
         )
 
-        if args.yacc:
-            file.write(
-                make_rule(
-                    '$(SRCDIR)/%.$(SRCEXT)',
-                    ['$(SRCDIR)/%.y'],
-                    ['$(YACC) $< -o $@'],
-                    'Generating $@'
-                )
-            )
+        file.write('-include $(DEPFILES)\n')
 
-        if args.lex:
-            file.write(
-                make_rule(
-                    '$(SRCDIR)/%.$(SRCEXT)',
-                    ['$(SRCDIR)/%.l'],
-                    ['$(LEX) $< -o $@'],
-                    'Generating $@'
-                )
-            )
+        sep()
 
-        file.write(
-            make_rule(
-                '$(BINDIR)/$(PROG)',
-                ['$(OBJFILES)'],
-                ['$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@'],
-                'Linking $@'
-            )
+        rule(
+            dir_ext('DEP'),
+            dir_ext('SRC'),
+            'rm -f $@',
+            '$(CC) -MM $< > $@.$$',
+            r"sed 's,\($*\)\.o[ :]*,$(OBJDIR)/\1.o $@ : ,g' <$@.$$ >$@",
+            'rm -f $@.$$'
         )
 
-        file.write('-include $(DEPFILES)\n\n')
+        rule('.PHONY', 'dirs')
 
-        file.write(
-            make_rule(
-                'clear',
-                ['$(BINDIR)/$(PROG)'],
-                ['rm -f $(OBJFILES) $(DEPFILES) $<'],
-                'Cleaning targets'
-            )
-        )
-
-        file.write(
-            make_rule(
-                '$(DEPDIR)/%.$(DEPEXT)',
-                ['$(SRCDIR)/%.$(SRCEXT)'],
-                ["""set -e; \\
-                    rm -f $@; \\
-                    $(CC) -MM $< > $@.$$$$; \\
-                    sed 's,\\($*\\)\\.o[ :]*,$(OBJDIR)/\\1.o $@ : ,g' < $@.$$$$ > $@; \\
-                    rm -f $@.$$$$
-                """]
-            )
-        )
+    return dirs.values()
 
 
-def make_dirs() -> None:
-    for dir in dirs.values():
-        mkdir(dir)
+def make_readme() -> None:
+    """
+    Generate the project's README.md file
+    """
+    with open('README.md', 'w') as file:
+        file.write(f'# {basename(getcwd())}\n')
 
 
-if __name__ == '__main__':
+def make_dirs(dirs: list) -> None:
+    """
+    Create the directories specified by dirs
+    """
+    for dir in dirs:
+        if not exists(dir):
+            try:
+                mkdir(dir)
+            except FileExistsError:
+                pass
+
+
+if __name__ == "__main__":
     args = get_options()
-    if args.git:
-        git_init()
-    make_makefile(args)
-    if not args.no_dirs:
-        make_dirs()
+    dirs = make_makefile(args)
+    make_dirs(dirs)

@@ -11,9 +11,9 @@ posh \- tarea implementación de una shell
 .SH DESCRIPTION
 .B posh
 es la implementación de una shell para la primera tarea de
-la asignatura de Sistemas Operativos 2020-2, profesora Cecilia
+la asignatura de \fBSistemas Operativos 2020-2\fR, profesora Cecilia
 Hernández Rivas. Soporta el piping de comandos (máximo 2 pipes
-en una sola línea)
+en una sola línea), además de la redirección de \fIstdin\fR y \fIstdout\fR
 
 .SH OPTIONS
 .TP
@@ -23,4 +23,21 @@ luego se sale del programa.
 .TP
 .BR \-i
 Fuerza la shell a que sea interactiva, incluso si se indicó la
-opción \-c
+opción \-c.
+
+.SH FILES
+.TP
+.BR posh_hist ", " .posh_hist
+La shell guarda el historial de comandos en éste archivo, ordenados
+por su frecuencia de uso. El historial es guardado internamente como
+una priority queue.
+
+.SH ENVIRONMENT
+.TP
+.BR XDG_CACHE_DIR
+Busca posh_hist en el directorio indicado por ésta variable si existe.
+Caso contrario usa $HOME/.posh_hist
+
+
+.SH AUTHOR
+Stuff

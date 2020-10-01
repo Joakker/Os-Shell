@@ -16,6 +16,13 @@ char** splitLine(char* line) {
         }
     }
 
+    /*
+     * for (int i = 0; cmd[i] != NULL; i++) {
+     *     // Quita las comillas de cada argumento
+     *     int len = strlen(cmd[i]);
+     * }
+     */
+
     return cmd;
 }
 
