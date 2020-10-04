@@ -2,6 +2,7 @@
 #include "cli.h"
 #include "utils.h"
 #include "signals.h"
+#include "history.h"
 
 #include <unistd.h>
 #include <string.h>
@@ -25,6 +26,7 @@ void interactiveLoop() {
         free(line);
         free(cmd);
     }
+    writeHistory();
 }
 
 int main(int argc, char* argv[]) {

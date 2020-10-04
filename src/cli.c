@@ -15,6 +15,7 @@ void launchProgram(char** cmd) {
     int pid = fork();
     if (pid < 0) {
         // Fork falló
+        fprintf(stderr, "Fallo al intentar llamar a fork()");
     } else if (pid == 0) {
         // Proceso hijo
         execvp(cmd[0], cmd);

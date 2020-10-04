@@ -198,6 +198,7 @@ def make_makefile(args: Namespace) -> set:
         rule(
             dir_ext('DEP'),
             dir_ext('SRC'),
+            "",
             'rm -f $@',
             '$(CC) -MM $< > $@.$$',
             r"sed 's,\($*\)\.o[ :]*,$(OBJDIR)/\1.o $@ : ,g' <$@.$$ >$@",
