@@ -28,11 +28,15 @@ $(OBJDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 all: dirs $(BINDIR)/$(PROG)
 	@echo "Done"
 
+$(BINDIR)/$(PROG): $(SRCFILES)
+	@echo "Linking $<"
+	@$(CC) $(LDFLAGS) $^ -o $@
+
 dirs: src dep obj bin
 	@echo "Making directories"
 	@mkdir -p $^
 
-# -include $(DEPFILES)
+-include $(DEPFILES)
 
 $(DEPDIR)/%.$(DEPEXT): $(SRCDIR)/%.$(SRCEXT)
 	@rm -f $@

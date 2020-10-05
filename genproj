@@ -36,7 +36,7 @@ def get_options() -> Namespace:
     # )
     parser.add_argument(
         '-F', '--find', type=str, metavar='F',
-        default='find . -name *.$(SRCEXT)',
+        default='find . -name "*.$(SRCEXT)" -printf "%P\\n"',
         help='''Command used to find files. Defaults to
         "find . -name *.$(SRCEXT)".'''
     )
@@ -183,6 +183,13 @@ def make_makefile(args: Namespace) -> set:
         )
 
         rule('all', f'dirs {output}', message='Done')
+
+        rule(
+            output,
+            '$(SRCFILES)',
+            'Linking $<',
+            '$(CC) $(LDFLAGS) $^ -o $@'
+        )
 
         rule(
             'dirs',
