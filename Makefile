@@ -29,8 +29,8 @@ all: dirs $(BINDIR)/$(PROG)
 	@echo "Done"
 
 $(BINDIR)/$(PROG): $(SRCFILES)
-	@echo "Linking $<"
-	@$(CC) $(LDFLAGS) $^ -o $@
+	@echo "Linking $@"
+	@$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 
 dirs: src dep obj bin
 	@echo "Making directories"
