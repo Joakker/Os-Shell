@@ -9,6 +9,7 @@
 
 void interactiveLoop() {
     setupSignals();
+    setupHistory();
     while (true) {
         // Obtiene la línea de comandos del usuario
         char* line = getCommandLine();
@@ -16,6 +17,10 @@ void interactiveLoop() {
         // El usuario emitió un EOF por teclado
         if (feof(stdin))
             break;
+
+        // Añade a la historia
+        addToHistory(line);
+
 
         // Divide la línea en sus palabras constituyentes
         char** cmd = splitLine(line);

@@ -3,4 +3,5 @@
     #include "config.h"
     void addToHistory(char*);
     void writeHistory();
+    void setupHistory();
 #endif
